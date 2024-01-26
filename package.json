@@ -2,7 +2,21 @@
   "name": "rustup",
   "displayName": "rustup",
   "description": "Manages rustup override and notifies when there are available toolchain updates",
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emberian/vscode-rustup.git"
+  },
+  "license": "Apache-2.0",
+  "publisher": "emberian",
+  "keywords": [
+    "rust",
+    "rustup",
+    "toolchain",
+    "override",
+    "update",
+    "notification"
+  ],
   "engines": {
     "vscode": "^1.85.0"
   },
