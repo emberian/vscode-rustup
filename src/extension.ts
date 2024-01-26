@@ -51,6 +51,7 @@ export function activate({ subscriptions }: vscode.ExtensionContext) {
 		}
 	};
 	updateStatus();
+	checkUpdates();
 	subscriptions.push(vscode.commands.registerCommand('rustup.listToolchains', () => {
 		runCommandForAllOutput('rustup', ['toolchain', 'list']).then((data) => {
 			let lines = data.split('\n');
