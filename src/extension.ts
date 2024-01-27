@@ -56,8 +56,15 @@ export function activate({ subscriptions }: vscode.ExtensionContext) {
 		runCommandForAllOutput('rustup', ['toolchain', 'list']).then((data) => {
 			let lines = data.split('\n');
 			vscode.window.showQuickPick(lines, { "title": "Change active toolchain?" }).then((selected) => {
-				if (selected) {
-					child_process.spawn('rustup', ['override', 'set', selected]).on('exit', () => updateStatus());
+				if (selected && vscode.window.activeTextEditor !== undefined) {
+					var currentWorkspacePath = vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri)?.uri.fsPath;
+					if (currentWorkspacePath === undefined) {
+						vscode.window.showErrorMessage("cannot determine workspace of active editor");
+					} else {
+						child_process.spawn('rustup', ['override', 'set', '--path', currentWorkspacePath, selected]).on('exit', () => updateStatus());
+					}
+				} else if (selected) {
+					vscode.window.showErrorMessage('No workspace folders found to set rustup override');
 				}
 			});
 		});

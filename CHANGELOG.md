@@ -6,6 +6,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## 1.0.2
+
+- Retrieves workspace folder containing active text editor file uri for override instead of setting it for `/`.
+
 ## 1.0.1
 
 - Actually starts checking for updates.
