@@ -6,6 +6,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+- Uses a Progress Notification during checkUpdates. However, `Install All` does not get this nicety.
+
 ## 1.0.2
 
 - Retrieves workspace folder containing active text editor file uri for override instead of setting it for `/`.

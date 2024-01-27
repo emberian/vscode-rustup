@@ -16,12 +16,10 @@ No settings, but in the future the update check should be optional.
 
 ## Known Issues
 
-If rustup isn't installed, may complain and throw errors.
+If rustup isn't installed, may complain and throw errors. Maybe it should offer to install rustup instead?
 
-Errors during updating are ignored and not logged anywhere.
+Errors during updating are acknowledged but not logged anywhere helpful.
 
 Update selection quickpick is ugly and could use some styling instead of using raw ascii.
 
-Will try to do `rustup update rustup` instead of `rustup self update` or anything akin.
-
-Installs all selected updates in parallel; should do so serially to be kinder to the network uplink.
+`Install All` option has a worse UX than `Choose` bc it doesn't use `withProgress`.

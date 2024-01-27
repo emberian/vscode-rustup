@@ -23,6 +23,20 @@ function runCommandForAllOutput(command: string, args: string[]): Promise<string
 	});
 }
 
+function runToolchainUpdate(which: string): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const process = child_process.spawn('rustup', ['update', which]);
+
+		process.on('close', (code) => {
+			if (code === 0) {
+				resolve();
+			} else {
+				reject();
+			}
+		});
+	});
+}
+
 function updateStatus() {
 	runCommandForAllOutput('rustup', ['show', 'active-toolchain']).then((data) => {
 		let cur_toolchain = data.split(' ')[0];
@@ -71,15 +85,29 @@ export function activate({ subscriptions }: vscode.ExtensionContext) {
 	}));
 	subscriptions.push(vscode.commands.registerCommand('rustup.checkUpdates', () => {
 		runCommandForAllOutput('rustup', ['check']).then((data) => {
-			let lines = data.split('\n');
-			vscode.window.showQuickPick(lines, { "canPickMany": true, "title": "Update selected toolchains?" }).then((selected) => {
-				if (selected) {
-					selected.forEach((item) => {
-						let toolchain_name = item.split(' - ')[0];
-						child_process.spawn('rustup', ['update', toolchain_name]);
-					});
-				}
-			});
+			let lines = data.split('\n').filter((line) => line.includes('Update available') && line.split(' - ')[0] !== "rustup");
+			if (lines.length !== 0) {
+				vscode.window.showQuickPick(lines, { "canPickMany": true, "title": "Update selected toolchains?" }).then((selected) => {
+					if (selected) {
+						vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Updating toolchains...' }, async (progress, cancel) => {
+							for (let item of selected) {
+								let toolchain_name = item.split(' - ')[0];
+								try {
+									if (cancel.isCancellationRequested) { return; }
+									await runToolchainUpdate(toolchain_name);
+								} catch (error) {
+									vscode.window.showErrorMessage(`Failed to update ${toolchain_name}`);
+									return;
+								}
+								progress.report({ increment: 100 / selected.length, message: `Updated ${toolchain_name}` });
+							}
+							vscode.window.showInformationMessage('All toolchains updated successfully! 🥳');
+						});
+					}
+				});
+			} else {
+				vscode.window.showInformationMessage('No updates available');
+			}
 		});
 	}));
 	subscriptions.push(statusBarItem);
