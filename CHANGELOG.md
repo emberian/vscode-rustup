@@ -4,7 +4,12 @@ All notable changes to the "rustup" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Unreleased]
+## 1.0.4
+
+- Deactivation disposes of the rustup debug log / status item.
+- `rustup.updateInterval` setting to control how often rustup is checked for updates, in hours.
+
+## 1.0.3
 
 - Uses a Progress Notification during checkUpdates command and when responding to the button.
 - All children stdout/stderr forwarded into a "rustup" Output Window.

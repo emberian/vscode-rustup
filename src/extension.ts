@@ -15,18 +15,16 @@ function dbgStdio(proc: child_process.ChildProcess): child_process.ChildProcess 
 }
 
 function collectStdout(command: string, args: string[]): Promise<string> {
-	let child = dbgStdio(child_process.spawn(command, args));
-
-	let stdout: any[] = [];
 	return new Promise((resolve, reject) => {
-		child.stdout?.on('data', (chunk) => {
-			stdout.push(Buffer.from(chunk));
-		});
+		let child = dbgStdio(child_process.spawn(command, args));
+		let stdout: any[] = [];
+
+		child.stdout?.on('data', stdout.push);
 		child.on('close', (code) => {
 			if (code === 0) {
 				resolve(Buffer.concat(stdout).toString());
 			} else {
-				reject();
+				reject(code);
 			}
 		});
 	});
@@ -133,7 +131,11 @@ export function activate({ subscriptions }: vscode.ExtensionContext) {
 		});
 	}));
 	subscriptions.push(statusBarItem);
+	subscriptions.push(dbgLog);
 	statusBarItem.command = "rustup.listToolchains";
 }
 
-export function deactivate() { }
+export function deactivate() {
+	statusBarItem.dispose();
+	dbgLog.dispose();
+}
