@@ -54,17 +54,63 @@ function updateStatus() {
 	});
 }
 
+function checkUpdates() {
+	collectStdout('rustup', ['check']).then((data) => {
+		let lines = data.split('\n').filter((line) => line.includes('Update available') && line.split(' - ')[0] !== "rustup");
+		if (lines.length !== 0) {
+			vscode.window.showQuickPick(lines, { "canPickMany": true, "title": "Update selected toolchains?" }).then((selected) => {
+				if (selected) {
+					vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Updating toolchains...' }, async (progress, cancel) => {
+						for (let item of selected) {
+							let toolchain_name = item.split(' - ')[0];
+							try {
+								if (cancel.isCancellationRequested) { return; }
+								await runToolchainUpdate(toolchain_name);
+							} catch (error) {
+								vscode.window.showErrorMessage(`Failed to update ${toolchain_name}`);
+								return;
+							}
+							progress.report({ increment: 100 / selected.length, message: `Updated ${toolchain_name}` });
+						}
+						vscode.window.showInformationMessage('All toolchains updated successfully! 🥳');
+					});
+				}
+			});
+		} else {
+			vscode.window.showInformationMessage('No updates available');
+		}
+	});
+}
+
+function listToolchains() {
+	collectStdout('rustup', ['toolchain', 'list']).then((data) => {
+		let lines = data.split('\n');
+		vscode.window.showQuickPick(lines, { "title": "Change active toolchain?" }).then((selected) => {
+			if (selected && vscode.window.activeTextEditor !== undefined) {
+				var currentWorkspacePath = vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri)?.uri.fsPath;
+				if (currentWorkspacePath === undefined) {
+					vscode.window.showErrorMessage("cannot determine workspace of active editor");
+				} else {
+					dbgStdio(child_process.spawn('rustup', ['override', 'set', '--path', currentWorkspacePath, selected]).on('exit', () => updateStatus()));
+				}
+			} else if (selected) {
+				vscode.window.showErrorMessage('No workspace folders found to set rustup override');
+			}
+		});
+	});
+}
+
 export function activate({ subscriptions }: vscode.ExtensionContext) {
 	statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
 	dbgLog = vscode.window.createOutputChannel('rustup');
 
-	const checkUpdates = async () => {
+	const updateChecker = async () => {
 		dbgLog.clear();
 		let hours_to_wait = vscode.workspace.getConfiguration('rustup').get('updateInterval', 24);
 		if (hours_to_wait == 0) {
 			return;
 		}
-		setTimeout(checkUpdates, 1000 * 60 * 60 * hours_to_wait);
+		setTimeout(updateChecker, 1000 * 60 * 60 * hours_to_wait);
 
 		let data = await collectStdout('rustup', ['check']);
 		if (data.includes('Update available')) {
@@ -84,54 +130,13 @@ export function activate({ subscriptions }: vscode.ExtensionContext) {
 			});
 		}
 	};
+
 	updateStatus();
-	checkUpdates();
-	subscriptions.push(vscode.commands.registerCommand('rustup.listToolchains', () => {
-		collectStdout('rustup', ['toolchain', 'list']).then((data) => {
-			let lines = data.split('\n');
-			vscode.window.showQuickPick(lines, { "title": "Change active toolchain?" }).then((selected) => {
-				if (selected && vscode.window.activeTextEditor !== undefined) {
-					var currentWorkspacePath = vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri)?.uri.fsPath;
-					if (currentWorkspacePath === undefined) {
-						vscode.window.showErrorMessage("cannot determine workspace of active editor");
-					} else {
-						dbgStdio(child_process.spawn('rustup', ['override', 'set', '--path', currentWorkspacePath, selected]).on('exit', () => updateStatus()));
-					}
-				} else if (selected) {
-					vscode.window.showErrorMessage('No workspace folders found to set rustup override');
-				}
-			});
-		});
-	}));
-	subscriptions.push(vscode.commands.registerCommand('rustup.checkUpdates', () => {
-		collectStdout('rustup', ['check']).then((data) => {
-			let lines = data.split('\n').filter((line) => line.includes('Update available') && line.split(' - ')[0] !== "rustup");
-			if (lines.length !== 0) {
-				vscode.window.showQuickPick(lines, { "canPickMany": true, "title": "Update selected toolchains?" }).then((selected) => {
-					if (selected) {
-						vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Updating toolchains...' }, async (progress, cancel) => {
-							for (let item of selected) {
-								let toolchain_name = item.split(' - ')[0];
-								try {
-									if (cancel.isCancellationRequested) { return; }
-									await runToolchainUpdate(toolchain_name);
-								} catch (error) {
-									vscode.window.showErrorMessage(`Failed to update ${toolchain_name}`);
-									return;
-								}
-								progress.report({ increment: 100 / selected.length, message: `Updated ${toolchain_name}` });
-							}
-							vscode.window.showInformationMessage('All toolchains updated successfully! 🥳');
-						});
-					}
-				});
-			} else {
-				vscode.window.showInformationMessage('No updates available');
-			}
-		});
-	}));
-	subscriptions.push(statusBarItem);
-	subscriptions.push(dbgLog);
+	updateChecker();
+
+	subscriptions.push(vscode.commands.registerCommand('rustup.listToolchains', listToolchains));
+	subscriptions.push(vscode.commands.registerCommand('rustup.checkUpdates', checkUpdates));
+	subscriptions.push(statusBarItem, dbgLog);
 	statusBarItem.command = "rustup.listToolchains";
 }
 
