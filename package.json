@@ -23,9 +23,22 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": ["onLanguage:rust"],
+  "activationEvents": [
+    "onLanguage:rust"
+  ],
   "main": "./out/extension.js",
   "contributes": {
+    "configuration": {
+      "type": "object",
+      "title": "rustup",
+      "properties": {
+        "rustup.updateInterval": {
+          "type": "number",
+          "default": 24,
+          "description": "The interval in hours to check for updates to the installed toolchains and rustup, set to 0 to disable"
+        }
+      }
+    },
     "commands": [
       {
         "command": "rustup.listToolchains",

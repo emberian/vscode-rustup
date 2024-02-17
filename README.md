@@ -14,9 +14,9 @@ Needs rustup to be installed & in the PATH.
 
 ## Extension Settings
 
-No settings, but in the future the update check should be optional.
+**`rustup.updateInterval`: number** - how often to check for updates in hours. Defaults to 24.
 
-## Known Issues
+## Help Wanted
 
 If rustup isn't installed, may complain and throw errors. Maybe it should offer or explain how to install rustup instead?
 

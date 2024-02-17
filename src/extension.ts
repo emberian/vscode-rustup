@@ -62,7 +62,12 @@ export function activate({ subscriptions }: vscode.ExtensionContext) {
 
 	const checkUpdates = async () => {
 		dbgLog.clear();
-		setTimeout(checkUpdates, 1000 * 60 * 60);
+		let hours_to_wait = vscode.workspace.getConfiguration('rustup').get('updateInterval', 24);
+		if (hours_to_wait == 0) {
+			return;
+		}
+		setTimeout(checkUpdates, 1000 * 60 * 60 * hours_to_wait);
+
 		let data = await runCommandForAllOutput('rustup', ['check']);
 		if (data.includes('Update available')) {
 			vscode.window.showInformationMessage('rustup toolchain updates are available', 'Install All', 'Choose').then((selected) => {
