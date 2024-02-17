@@ -17,6 +17,7 @@ Needs rustup to be installed.
 ## Extension Settings
 
 **`rustup.updateInterval`: number** - how often to check for updates in hours. Defaults to 24.
+
 **`rustup.path`: string** - where to find rustup. Defaults to searching PATH.
 
 ## Help Wanted
