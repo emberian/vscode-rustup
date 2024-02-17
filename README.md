@@ -10,11 +10,12 @@ When a Rust file is open, a status bar item showing the current rustup toolchain
 
 ## Requirements
 
-Needs rustup to be installed & in the PATH.
+Needs rustup to be installed.
 
 ## Extension Settings
 
 **`rustup.updateInterval`: number** - how often to check for updates in hours. Defaults to 24.
+**`rustup.path`: string** - where to find rustup. Defaults to searching PATH.
 
 ## Help Wanted
 

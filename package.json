@@ -2,7 +2,7 @@
   "name": "rustup",
   "displayName": "rustup",
   "description": "Manages rustup override and notifies when there are available toolchain updates",
-  "version": "1.0.4-dev",
+  "version": "1.0.4",
   "repository": {
     "type": "git",
     "url": "https://github.com/emberian/vscode-rustup.git"
@@ -36,6 +36,11 @@
           "type": "number",
           "default": 24,
           "description": "The interval in hours to check for updates to the installed toolchains and rustup, set to 0 to disable"
+        },
+        "rustup.path": {
+          "type": "string",
+          "default": "",
+          "description": "The path to the rustup executable"
         }
       }
     },

@@ -4,8 +4,12 @@ import * as child_process from 'node:child_process';
 let statusBarItem: vscode.StatusBarItem;
 let dbgLog: vscode.OutputChannel;
 
-function dbgStdio(prog: string, argv: string[]): child_process.ChildProcess {
-	let proc = child_process.spawn(prog, argv);
+function findRustup(): string {
+	return vscode.workspace.getConfiguration('rustup').get('path') || 'rustup';
+}
+
+function dbgStdio(argv: string[]): child_process.ChildProcess {
+	let proc = child_process.spawn(findRustup(), argv);
 	proc.stdout?.on('data', (chunk) => {
 		dbgLog.append(chunk.toString());
 	});
@@ -15,13 +19,15 @@ function dbgStdio(prog: string, argv: string[]): child_process.ChildProcess {
 	return proc;
 }
 
-function collectStdout(command: string, args: string[]): Promise<string> {
+function collectStdout(args: string[]): Promise<string> {
 	return new Promise((resolve, reject) => {
-		let child = child_process.spawn(command, args);
+		let child = child_process.spawn(findRustup(), args);
 		let stdout: any[] = [];
-
+		let stderr: any[] = [];
 		child.stdout?.on('data', (data) => stdout.push(data));
+		child.stderr?.on('data', (data) => stderr.push(data));
 		child.on('close', (code) => {
+			dbgLog.append(Buffer.concat(stderr).toString());
 			if (code === 0) {
 				resolve(Buffer.concat(stdout).toString());
 			} else {
@@ -33,10 +39,9 @@ function collectStdout(command: string, args: string[]): Promise<string> {
 
 function runToolchainUpdate(which: string): Promise<void> {
 	return new Promise((resolve, reject) => {
-		dbgLog.show();
 		dbgLog.appendLine(`$ rustup update ${which}`);
 
-		const process = dbgStdio('rustup', ['update', which]);
+		const process = dbgStdio(['update', which]);
 		process.on('close', (code) => {
 			if (code === 0) {
 				resolve();
@@ -47,20 +52,20 @@ function runToolchainUpdate(which: string): Promise<void> {
 	});
 }
 
-function updateStatus() {
-	collectStdout('rustup', ['show', 'active-toolchain']).then((data) => {
-		let cur_toolchain = data.split(' ')[0];
-		statusBarItem.text = `rustup: ${cur_toolchain}`;
-		statusBarItem.show();
-	});
+async function updateStatus() {
+	let data = await collectStdout(['show', 'active-toolchain']);
+	let cur_toolchain = data.split(' ')[0];
+	statusBarItem.text = `rustup: ${cur_toolchain}`;
+	statusBarItem.show();
 }
 
 async function checkUpdates() {
-	let checkOutput = await collectStdout('rustup', ['check']);
+	let checkOutput = await collectStdout(['check']);
 	let lines = checkOutput.split('\n').filter((line) => line.includes('Update available') && line.split(' - ')[0] !== "rustup");
 	if (lines.length !== 0) {
-		let selected = await vscode.window.showQuickPick(lines, { "canPickMany": true, "title": "Update selected toolchains?" }) as string[];
-		if (selected) {
+		const selected = await vscode.window.showQuickPick(lines, { "canPickMany": true, "title": "Update selected toolchains?" });
+		if (selected && selected.length !== 0) {
+			dbgLog.show();
 			vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Updating toolchains...' }, async (progress, cancel) => {
 				for (let item of selected) {
 					let toolchain_name = item.split(' - ')[0];
@@ -77,19 +82,19 @@ async function checkUpdates() {
 			});
 		}
 	} else {
-		vscode.window.showInformationMessage('No updates available');
+		vscode.window.showInformationMessage('rustup and toolchains up to date');
 	}
 }
 
 async function listToolchains() {
-	let availableToolchains = (await collectStdout('rustup', ['toolchain', 'list'])).split('\n');
+	let availableToolchains = (await collectStdout(['toolchain', 'list'])).split('\n');
 	let selected = await vscode.window.showQuickPick(availableToolchains, { "title": "Change active toolchain?" });
 	if (selected && vscode.window.activeTextEditor !== undefined) {
 		let currentWorkspacePath = vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri)?.uri.fsPath;
 		if (currentWorkspacePath === undefined) {
 			vscode.window.showErrorMessage("cannot determine workspace of active editor");
 		} else {
-			dbgStdio('rustup', ['override', 'set', '--path', currentWorkspacePath, selected]).on('exit', () => updateStatus());
+			dbgStdio(['override', 'set', '--path', currentWorkspacePath, selected]).on('exit', () => updateStatus());
 		}
 	} else if (selected) {
 		vscode.window.showErrorMessage('No workspace folders found to set rustup override');
@@ -104,13 +109,13 @@ async function updateChecker() {
 	}
 	setTimeout(updateChecker, 1000 * 60 * 60 * hours_to_wait);
 
-	let data = await collectStdout('rustup', ['check']);
+	let data = await collectStdout(['check']);
 	if (data.includes('Update available')) {
 		vscode.window.showInformationMessage('rustup toolchain updates are available', 'Install All', 'Choose').then((selected) => {
 			if (selected) {
 				if (selected === 'Install All') {
 					vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Updating toolchains...' }, async (progress, cancel) => {
-						dbgStdio('rustup', ['update']).on('exit', () => {
+						dbgStdio(['update']).on('exit', () => {
 							progress.report({ increment: 100 });
 							vscode.window.showInformationMessage('Rustup toolchain updates complete!');
 						})

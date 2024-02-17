@@ -8,6 +8,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 - Deactivation disposes of the rustup debug log / status item.
 - `rustup.updateInterval` setting to control how often rustup is checked for updates, in hours.
+- `rustup.path` setting to configure rustup path.
 
 ## 1.0.3
 
