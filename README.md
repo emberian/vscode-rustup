@@ -16,10 +16,6 @@ No settings, but in the future the update check should be optional.
 
 ## Known Issues
 
-If rustup isn't installed, may complain and throw errors. Maybe it should offer to install rustup instead?
-
-Errors during updating are acknowledged but not logged anywhere helpful.
+If rustup isn't installed, may complain and throw errors. Maybe it should offer or explain how to install rustup instead?
 
 Update selection quickpick is ugly and could use some styling instead of using raw ascii.
-
-`Install All` option has a worse UX than `Choose` bc it doesn't use `withProgress`.
