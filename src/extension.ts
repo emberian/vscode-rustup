@@ -136,7 +136,4 @@ export function activate({ subscriptions }: vscode.ExtensionContext) {
 	statusBarItem.command = "rustup.listToolchains";
 }
 
-export function deactivate() {
-	statusBarItem.dispose();
-	dbgLog.dispose();
-}
+export function deactivate() { }
