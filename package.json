@@ -2,7 +2,7 @@
   "name": "rustup",
   "displayName": "rustup",
   "description": "Manages rustup override and notifies when there are available toolchain updates",
-  "version": "1.0.3-dev",
+  "version": "1.0.4-dev",
   "repository": {
     "type": "git",
     "url": "https://github.com/emberian/vscode-rustup.git"
