@@ -1,5 +1,7 @@
 # vscode-rustup
 
+[VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=emberian.rustup)
+
 A simple status bar item to show the current rustup channel, and a command for setting the override. Will periodically remind when `rustup update` reports any toolchain has an update ready. 
 
 ![Status toolchain selection menu demonstration](screenshot.png)
