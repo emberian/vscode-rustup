@@ -6,7 +6,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
-- Uses a Progress Notification during checkUpdates. However, `Install All` does not get this nicety.
+- Uses a Progress Notification during checkUpdates command and when responding to the button.
+- All children stdout/stderr forwarded into a "rustup" Output Window.
 
 ## 1.0.2
 

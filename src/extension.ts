@@ -4,14 +4,23 @@ import * as vscode from 'vscode';
 import * as child_process from 'node:child_process';
 
 let statusBarItem: vscode.StatusBarItem;
+let dbgLog: vscode.OutputChannel;
 
+function dbgStdio(proc: child_process.ChildProcess) {
+	proc.stdout?.on('data', (chunk) => {
+		dbgLog.append(chunk.toString());
+	});
+	proc.stderr?.on('data', (chunk) => {
+		dbgLog.append(chunk.toString());
+	});
+}
 function runCommandForAllOutput(command: string, args: string[]): Promise<string> {
 	let child = child_process.spawn(command, args);
+	dbgStdio(child);
 	let allData: any[] = [];
 	return new Promise((resolve, reject) => {
 		child.stdout.on('data', (chunk) => {
 			allData.push(Buffer.from(chunk));
-			console.log(typeof chunk);
 		});
 		child.on('close', (code) => {
 			if (code === 0) {
@@ -26,12 +35,14 @@ function runCommandForAllOutput(command: string, args: string[]): Promise<string
 function runToolchainUpdate(which: string): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const process = child_process.spawn('rustup', ['update', which]);
-
+		dbgLog.show();
+		dbgLog.appendLine(`rustup update ${which}`);
+		dbgStdio(process);
 		process.on('close', (code) => {
 			if (code === 0) {
 				resolve();
 			} else {
-				reject();
+				reject(code);
 			}
 		});
 	});
@@ -45,10 +56,10 @@ function updateStatus() {
 	});
 }
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
 export function activate({ subscriptions }: vscode.ExtensionContext) {
 	statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
+	dbgLog = vscode.window.createOutputChannel('rustup');
+
 	const checkUpdates = async () => {
 		setTimeout(checkUpdates, 1000 * 60 * 60);
 		let data = await runCommandForAllOutput('rustup', ['check']);
@@ -56,7 +67,12 @@ export function activate({ subscriptions }: vscode.ExtensionContext) {
 			vscode.window.showInformationMessage('rustup toolchain updates are available', 'Install All', 'Choose').then((selected) => {
 				if (selected) {
 					if (selected === 'Install All') {
-						child_process.spawn('rustup', ['update']).on('exit', () => vscode.window.showInformationMessage('Rustup toolchain updates complete!'));
+						vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Updating toolchains...' }, async (progress, cancel) => {
+							let child = child_process.spawn('rustup', ['update']);
+							dbgStdio(child)
+							child.stdout.on('data', (chunk) => progress.report({ message: chunk.toString() }));
+							child.on('exit', () => { progress.report({ increment: 100 }); vscode.window.showInformationMessage('Rustup toolchain updates complete!'); })
+						});
 					} else if (selected === 'Choose') {
 						vscode.commands.executeCommand('rustup.checkUpdates');
 					}
@@ -75,7 +91,7 @@ export function activate({ subscriptions }: vscode.ExtensionContext) {
 					if (currentWorkspacePath === undefined) {
 						vscode.window.showErrorMessage("cannot determine workspace of active editor");
 					} else {
-						child_process.spawn('rustup', ['override', 'set', '--path', currentWorkspacePath, selected]).on('exit', () => updateStatus());
+						dbgStdio(child_process.spawn('rustup', ['override', 'set', '--path', currentWorkspacePath, selected]).on('exit', () => updateStatus()));
 					}
 				} else if (selected) {
 					vscode.window.showErrorMessage('No workspace folders found to set rustup override');
