@@ -4,7 +4,8 @@ import * as child_process from 'node:child_process';
 let statusBarItem: vscode.StatusBarItem;
 let dbgLog: vscode.OutputChannel;
 
-function dbgStdio(proc: child_process.ChildProcess): child_process.ChildProcess {
+function dbgStdio(prog: string, argv: string[]): child_process.ChildProcess {
+	let proc = child_process.spawn(prog, argv);
 	proc.stdout?.on('data', (chunk) => {
 		dbgLog.append(chunk.toString());
 	});
@@ -16,10 +17,10 @@ function dbgStdio(proc: child_process.ChildProcess): child_process.ChildProcess 
 
 function collectStdout(command: string, args: string[]): Promise<string> {
 	return new Promise((resolve, reject) => {
-		let child = dbgStdio(child_process.spawn(command, args));
+		let child = child_process.spawn(command, args);
 		let stdout: any[] = [];
 
-		child.stdout?.on('data', stdout.push);
+		child.stdout?.on('data', (data) => stdout.push(data));
 		child.on('close', (code) => {
 			if (code === 0) {
 				resolve(Buffer.concat(stdout).toString());
@@ -35,7 +36,7 @@ function runToolchainUpdate(which: string): Promise<void> {
 		dbgLog.show();
 		dbgLog.appendLine(`$ rustup update ${which}`);
 
-		const process = dbgStdio(child_process.spawn('rustup', ['update', which]));
+		const process = dbgStdio('rustup', ['update', which]);
 		process.on('close', (code) => {
 			if (code === 0) {
 				resolve();
@@ -87,11 +88,11 @@ function listToolchains() {
 		let lines = data.split('\n');
 		vscode.window.showQuickPick(lines, { "title": "Change active toolchain?" }).then((selected) => {
 			if (selected && vscode.window.activeTextEditor !== undefined) {
-				var currentWorkspacePath = vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri)?.uri.fsPath;
+				let currentWorkspacePath = vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri)?.uri.fsPath;
 				if (currentWorkspacePath === undefined) {
 					vscode.window.showErrorMessage("cannot determine workspace of active editor");
 				} else {
-					dbgStdio(child_process.spawn('rustup', ['override', 'set', '--path', currentWorkspacePath, selected]).on('exit', () => updateStatus()));
+					dbgStdio('rustup', ['override', 'set', '--path', currentWorkspacePath, selected]).on('exit', () => updateStatus());
 				}
 			} else if (selected) {
 				vscode.window.showErrorMessage('No workspace folders found to set rustup override');
@@ -100,36 +101,36 @@ function listToolchains() {
 	});
 }
 
+async function updateChecker() {
+	dbgLog.clear();
+	let hours_to_wait = vscode.workspace.getConfiguration('rustup').get('updateInterval', 24);
+	if (hours_to_wait == 0) {
+		return;
+	}
+	setTimeout(updateChecker, 1000 * 60 * 60 * hours_to_wait);
+
+	let data = await collectStdout('rustup', ['check']);
+	if (data.includes('Update available')) {
+		vscode.window.showInformationMessage('rustup toolchain updates are available', 'Install All', 'Choose').then((selected) => {
+			if (selected) {
+				if (selected === 'Install All') {
+					vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Updating toolchains...' }, async (progress, cancel) => {
+						dbgStdio('rustup', ['update']).on('exit', () => {
+							progress.report({ increment: 100 });
+							vscode.window.showInformationMessage('Rustup toolchain updates complete!');
+						})
+					});
+				} else if (selected === 'Choose') {
+					vscode.commands.executeCommand('rustup.checkUpdates');
+				}
+			}
+		});
+	}
+};
+
 export function activate({ subscriptions }: vscode.ExtensionContext) {
 	statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
 	dbgLog = vscode.window.createOutputChannel('rustup');
-
-	const updateChecker = async () => {
-		dbgLog.clear();
-		let hours_to_wait = vscode.workspace.getConfiguration('rustup').get('updateInterval', 24);
-		if (hours_to_wait == 0) {
-			return;
-		}
-		setTimeout(updateChecker, 1000 * 60 * 60 * hours_to_wait);
-
-		let data = await collectStdout('rustup', ['check']);
-		if (data.includes('Update available')) {
-			vscode.window.showInformationMessage('rustup toolchain updates are available', 'Install All', 'Choose').then((selected) => {
-				if (selected) {
-					if (selected === 'Install All') {
-						vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Updating toolchains...' }, async (progress, cancel) => {
-							dbgStdio(child_process.spawn('rustup', ['update'])).on('exit', () => {
-								progress.report({ increment: 100 });
-								vscode.window.showInformationMessage('Rustup toolchain updates complete!');
-							})
-						});
-					} else if (selected === 'Choose') {
-						vscode.commands.executeCommand('rustup.checkUpdates');
-					}
-				}
-			});
-		}
-	};
 
 	updateStatus();
 	updateChecker();
