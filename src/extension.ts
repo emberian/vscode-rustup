@@ -61,6 +61,7 @@ export function activate({ subscriptions }: vscode.ExtensionContext) {
 	dbgLog = vscode.window.createOutputChannel('rustup');
 
 	const checkUpdates = async () => {
+		dbgLog.clear();
 		setTimeout(checkUpdates, 1000 * 60 * 60);
 		let data = await runCommandForAllOutput('rustup', ['check']);
 		if (data.includes('Update available')) {
@@ -70,7 +71,6 @@ export function activate({ subscriptions }: vscode.ExtensionContext) {
 						vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: 'Updating toolchains...' }, async (progress, cancel) => {
 							let child = child_process.spawn('rustup', ['update']);
 							dbgStdio(child)
-							child.stdout.on('data', (chunk) => progress.report({ message: chunk.toString() }));
 							child.on('exit', () => { progress.report({ increment: 100 }); vscode.window.showInformationMessage('Rustup toolchain updates complete!'); })
 						});
 					} else if (selected === 'Choose') {
